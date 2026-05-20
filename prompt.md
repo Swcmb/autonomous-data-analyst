@@ -459,14 +459,7 @@ AI：
 
 ## Phase 3：Architecture Review（架构评审）
 
-将规格文档提交给：
-
-多个 Reviewer SubAgent：
-
-* 数据架构 Agent
-* 分析 Agent
-* 审核 Agent
-* 可扩展性 Agent
+将规格文档提交给DocReview 子智能体（使用docreview.prompt.md）：
 
 进行多轮审查。
 
@@ -491,9 +484,7 @@ AI：
 
 获得所有 Reviewer Agent 批准后：
 
-向用户确认：
-
-> “是否开始实际开发与执行？”
+自动开始实际开发与执行
 
 ---
 
