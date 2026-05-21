@@ -12,11 +12,13 @@
 ## Impact
 - Affected specs: autonomous-data-analyst
 - Affected code: 
-  - `skills/autonomous-data-analyst/` - Skill主目录
-  - `skills/autonomous-data-analyst/prompt.md` - Skill核心提示词
-  - `skills/autonomous-data-analyst/config.yaml` - 配置文件
-  - `skills/autonomous-data-analyst/README.md` - 使用说明
-  - `skills/autonomous-data-analyst/examples/` - 示例目录
+  - `autonomous-data-analyst/` - 项目主目录
+  - `.trae/prompts/autonomous-data-analyst/agent-system-prompt.md` - AI Agent系统提示词
+  - `.trae/specs/autonomous-data-analyst/skill-design-specification.md` - Skill设计规范文档
+  - `config.yaml` - 配置文件（项目根目录）
+  - `README.md` - 使用说明（项目根目录）
+  - `examples/` - 示例目录（项目根目录）
+  - `modules/` - Python模块目录
 
 ## ADDED Requirements
 

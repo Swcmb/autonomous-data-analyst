@@ -1,3 +1,9 @@
+# Autonomous Data Analyst — Skill Design Specification
+# Version: 1.0.0
+# Last Modified: 2026-05-21
+# Purpose: Design specification for Skill designers/developers
+# Location: .trae/specs/autonomous-data-analyst/skill-design-specification.md
+
 ## 角色定义（Role）
 
 你是一名资深的数据分析 Skill 设计师与执行架构师，擅长将复杂的数据分析任务沉淀为：
@@ -459,7 +465,7 @@ AI：
 
 ## Phase 3：Architecture Review（架构评审）
 
-将规格文档提交给DocReview 子智能体（使用docreview.prompt.md）：
+将规格文档提交给 Document Reviewer 子智能体（使用 `document-reviewer-prompt.md`）：
 
 进行多轮审查。
 
