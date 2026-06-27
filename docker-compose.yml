@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  ada:
+    build: .
+    container_name: autonomous-data-analyst
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./skills_data:/app/skills_data
+    command: ["python", "main.py", "分析销售趋势", "--data", "examples/sample.csv", "--output", "/app/output"]
