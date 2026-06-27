@@ -132,8 +132,8 @@ output/
 ```
 autonomous-data-analyst/
 ├── main.py                # 主入口
-├── config.yaml            # 配置文件
 ├── requirements.txt       # 依赖清单
+├── pyproject.toml         # 项目配置
 ├── modules/               # 核心模块
 │   ├── analysis_planner.py
 │   ├── data_pipeline.py
@@ -144,10 +144,8 @@ autonomous-data-analyst/
 │   ├── self_review.py
 │   ├── skill_persistence.py
 │   └── visualization.py
-├── examples/              # 示例文件
-└── .trae/                 # 配置与规格目录
-    ├── prompts/           # AI提示词
-    └── specs/             # 设计规范
+├── tests/                 # 测试套件
+└── examples/              # 示例文件
 ```
 
 ## 分析流程

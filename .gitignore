@@ -29,3 +29,8 @@ htmlcov/
 # 系统
 .DS_Store
 Thumbs.db
+
+# IDE / 工具
+.claude/
+.trae/
+claude-context/
