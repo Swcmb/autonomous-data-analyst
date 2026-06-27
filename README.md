@@ -9,13 +9,17 @@
 pip install -r requirements.txt
 
 # 基础使用 - 分析销售数据
-python main.py "分析2024年Q1销售数据" --data ./data/sales.csv --output ./output
+python main.py "分析销售趋势" --data examples/sample.csv --output ./output
 
 # 交互式模式
 python main.py --mode interactive
 
 # 技能回放模式
-python main.py --mode replay --skill-id sales_analysis --data ./data/new_sales.csv
+python main.py --mode replay --skill-id <skill_id> --data ./data/new_sales.csv
+
+# 运行测试
+pip install pytest
+pytest tests/ -v
 ```
 
 ## 功能特性

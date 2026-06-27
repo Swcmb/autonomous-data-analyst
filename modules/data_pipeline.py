@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +81,169 @@ class DataPipeline:
         self.stats.input_rows = len(data) if data is not None else 0
         self._log(f"加载数据: {self.stats.input_rows} 行")
         return self
+
+    def load(self, detection_result: Any) -> DataPipeline:
+        """
+        根据数据源检测结果自动加载数据
+
+        Args:
+            detection_result: DataSourceDetector.detect() 返回的 DetectionResult
+
+        Returns:
+            self（支持链式调用）
+        """
+        # 延迟导入避免循环依赖
+        from modules.data_source_detector import AccessProtocol
+
+        source = getattr(detection_result, "primary_source", None)
+        if source is None:
+            raise ValueError("检测结果中无有效数据源信息")
+
+        protocol = source.access_protocol
+        location = source.location
+
+        if protocol == AccessProtocol.LOCAL_FILE:
+            df = self._load_local_file(location)
+        elif protocol in (AccessProtocol.HTTP, AccessProtocol.HTTPS):
+            df = self._load_from_url(location)
+        elif protocol in (
+            AccessProtocol.MYSQL, AccessProtocol.POSTGRESQL,
+            AccessProtocol.SQLITE,
+        ):
+            df = self._load_from_database(source)
+        else:
+            logger.warning("不支持的访问协议: %s，返回空数据", protocol)
+            df = pd.DataFrame()
+
+        self.load_data(df)
+        return self
+
+    def clean(self, data: Any = None) -> DataPipeline:
+        """
+        一键清洗：缺失值处理 → 去重 → 异常值截断
+
+        Args:
+            data: 可选的输入数据，传入则先加载
+
+        Returns:
+            self（支持链式调用）
+        """
+        if data is not None:
+            self.load_data(data)
+
+        self.handle_missing()
+        self.deduplicate()
+        self._clip_anomalies()
+        return self
+
+    def transform(self, data: Any = None, goal_spec: Any = None) -> Any:
+        """
+        数据转换：归一化 + 按目标规格适配
+
+        Args:
+            data: 可选的输入数据
+            goal_spec: AnalysisGoalSpec 实例（可选）
+
+        Returns:
+            处理后的 DataFrame
+        """
+        if data is not None:
+            self._current_data = data
+
+        if self._current_data is None:
+            self._log("跳过转换: 无数据")
+            return None
+
+        # 按配置执行归一化
+        if self.config.normalization_method:
+            self.normalize()
+
+        self.stats.output_rows = len(self._current_data)
+        self._log(f"转换完成: {self.stats.output_rows} 行")
+        return self._current_data
+
+    def _clip_anomalies(self) -> DataPipeline:
+        """用 IQR 方法截断异常值到合理范围"""
+        if self._current_data is None:
+            return self
+
+        numeric_cols = self._current_data.select_dtypes(include="number").columns
+        threshold = self.config.anomaly_threshold
+        clipped_count = 0
+
+        for col in numeric_cols:
+            q1 = self._current_data[col].quantile(0.25)
+            q3 = self._current_data[col].quantile(0.75)
+            iqr = q3 - q1
+            lower = q1 - threshold * iqr
+            upper = q3 + threshold * iqr
+
+            outliers = ((self._current_data[col] < lower) |
+                        (self._current_data[col] > upper))
+            clipped_count += int(outliers.sum())
+
+            self._current_data[col] = self._current_data[col].clip(lower, upper)
+
+        if clipped_count > 0:
+            self.stats.anomalies_detected += clipped_count
+            self._log(f"异常值截断: {clipped_count} 个值被 clip 到 IQR 范围内")
+        return self
+
+    def _load_local_file(self, location: str) -> Any:
+        """根据文件扩展名加载本地文件"""
+        path = Path(location)
+        if not path.exists():
+            raise FileNotFoundError(f"数据文件不存在: {location}")
+
+        ext = path.suffix.lower()
+        loaders = {
+            ".csv": lambda p: pd.read_csv(p),
+            ".xlsx": lambda p: pd.read_excel(p),
+            ".xls": lambda p: pd.read_excel(p),
+            ".parquet": lambda p: pd.read_parquet(p),
+            ".json": lambda p: pd.read_json(p),
+            ".feather": lambda p: pd.read_feather(p),
+        }
+
+        loader = loaders.get(ext)
+        if loader is None:
+            raise ValueError(f"不支持的文件格式: {ext}")
+
+        self._log(f"加载本地文件: {location} ({ext})")
+        return loader(str(path))
+
+    def _load_from_url(self, url: str) -> Any:
+        """从 HTTP/HTTPS URL 下载并加载"""
+        import requests
+
+        self._log(f"从 URL 下载: {url}")
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+
+        # 写入临时文件后按扩展名加载
+        suffix = Path(url.split("?")[0]).suffix or ".csv"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(resp.content)
+            tmp_path = tmp.name
+
+        try:
+            return self._load_local_file(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+    def _load_from_database(self, source: Any) -> Any:
+        """从数据库连接加载"""
+        from sqlalchemy import create_engine
+
+        conn_str = source.connection_params.get("connection_string", "")
+        query = source.connection_params.get("query", "")
+
+        if not conn_str:
+            raise ValueError("数据库连接字符串为空")
+
+        self._log(f"从数据库加载: {conn_str}")
+        engine = create_engine(conn_str)
+        return pd.read_sql(query or "SELECT 1", engine)
 
     def handle_missing(self) -> DataPipeline:
         """处理缺失值"""
